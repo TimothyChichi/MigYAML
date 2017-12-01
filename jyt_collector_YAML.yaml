@@ -1,76 +1,95 @@
-JYTTemplateFormatVersion: 2017-11-29
+JYTTemplateFormatVersion: 2017-12-01
 Description: >-
   Description .....
 Parameters:
   KeyName:
     Description: Name of an existing KeyPair to enable SSH access to the instance
+    Valid: # boolean
+    Type: String
+  SSHLocation:
+    Description: The IP address range that can be used to SSH
+    Valid: # boolean
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
   DBName:
     Description: MySQL database name
+    Valid: # boolean
     Type: String
     MinLength: '6'
     MaxLength: '64'
     AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
   DBUser:
     Description: Username for MySQL database access
+    Valid: # boolean
     Type: String
     MinLength: '6'
     MaxLength: '64'
     AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
   DBPassword:
     Description: Password for MySQL database access
+    Valid: # boolean
     Type: secureString
     MinLength: '6'
     MaxLength: '64'
     AllowedPattern: '[a-zA-Z0-9]*'
   DBRootPassword:
     Description: Root password for MySQL
+    Valid: # boolean
     Type: secureString
     MinLength: '6'
     MaxLength: '64'
     AllowedPattern: '[a-zA-Z0-9]*'
   DBsize:
     Description: Size of DataBase for MySQL in MB
+    Valid: # boolean
     Type: int
   StorageUser:
     Description: Username for Storage access
+    Valid: # boolean
     Type: String
     MinLength: '6'
     MaxLength: '64'
     AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
   StoragePassword:
     Description: Password for Storage access
-    Type: secureString
-    MinLength: '6'
-    MaxLength: '64'
-    AllowedPattern: '[a-zA-Z0-9]*'
-  vmName: 
-    Description: Name of Virtual Machine
-  SecurityGroupName: 
-    Description: Name of Security Group Name
-  NetworkInterfaceName: 
-    Description: Name of Network Interface Name
-  vmAdminUser:
-    Description: Username for Virtual Machine
-    Type: String
-    MinLength: '6'
-    MaxLength: '64'
-    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
-  vmAdminPassword:
-    Description: Password for Virtual Machine access
+    Valid: # boolean
     Type: secureString
     MinLength: '6'
     MaxLength: '64'
     AllowedPattern: '[a-zA-Z0-9]*'
   Storage Size:
     Description: storage size in GB.
+    Valid: # boolean
     Type: int
-  SSHLocation:
-    Description: The IP address range that can be used to SSH
+  vmName: 
+    Description: Name of Virtual Machine
+    Valid: # boolean
     Type: String
-    MinLength: '9'
-    MaxLength: '18'
-    Default: 0.0.0.0/0
-    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+  vmAdminUser:
+    Description: Username for Virtual Machine
+    Valid: # boolean
+    Type: String
+    MinLength: '6'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+  vmAdminPassword:
+    Description: Password for Virtual Machine access
+    Valid: # boolean
+    Type: secureString
+    MinLength: '6'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z0-9]*'
+  SecurityGroupName: 
+    Description: Name of Security Group Name
+    Valid: # boolean
+    Type: String
+  NetworkInterfaceName: 
+    Description: Name of Network Interface Name
+    Valid: # boolean
+    Type: String
 
 Variables:
   vCPU: !FindInMap 
@@ -92,7 +111,6 @@ Variables:
   vCPUtype:       # string (e.g., Intel Xeon)
   Volume:         # integer (in GB)
 
-
   subnetID:       # string
   subnetName:     # string
   subnetPrefix:   # string (e.g., "10.0.0.0/24")
@@ -102,36 +120,6 @@ Variables:
 
 
 
-Mappings:
-  AWStoCPURAM:
-    t2.nano:
-      vCPU:  1            # in GiB
-      RAM:   0.5          # in GiB
-      Price: '0.0058/hr'  # string
-    t2.micro:
-      vCPU:  1
-      RAM:   1
-      Price: '0.0116/hr'
-    t2.medium:
-      vCPU:  2
-      RAM:   4
-      Price: '0.0464/hr'
-    t2.large:
-      vCPU:  2
-      RAM:   8
-      Price: '0.0928/hr'
-    m4.xlarge:
-      vCPU:  4
-      RAM:   16
-      Price: '0.2/hr'
-    m4.4xlarge:
-      vCPU:  16
-      RAM:   64
-      Price: '0.8/hr'
-    m4.16xlarge:
-      vCPU:  64
-      RAM:   256
-      Price: '3.2/hr'
 
 Resources:
   VirtualMachine:
@@ -160,8 +148,6 @@ Resources:
         - 'apache2'
         - 'mysql'
         - 'php'
-
-
     Metadata:
 
 
@@ -212,5 +198,40 @@ Resources:
     adminstratorLogin: !Ref DBUser
     adminstratorPassword: !Ref DBPassword
     storageMB: !Ref DBsize
+
+
+Mappings:
+  AWStoCPURAM:
+    t2.nano:
+      vCPU:  1            # in GiB
+      RAM:   0.5          # in GiB
+      Price: '0.0058/hr'  # string
+    t2.micro:
+      vCPU:  1
+      RAM:   1
+      Price: '0.0116/hr'
+    t2.medium:
+      vCPU:  2
+      RAM:   4
+      Price: '0.0464/hr'
+    t2.large:
+      vCPU:  2
+      RAM:   8
+      Price: '0.0928/hr'
+    m4.xlarge:
+      vCPU:  4
+      RAM:   16
+      Price: '0.2/hr'
+    m4.4xlarge:
+      vCPU:  16
+      RAM:   64
+      Price: '0.8/hr'
+    m4.16xlarge:
+      vCPU:  64
+      RAM:   256
+      Price: '3.2/hr'
+
+Metadata:
+
 
 # Ref: https://www.ec2instances.info/
