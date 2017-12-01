@@ -89,21 +89,74 @@ Parameters:
   NetworkInterfaceName: 
     Description: Name of Network Interface Name
     Valid: # boolean
+    Type: String  
+  DomainDNSName:
+    Description: >-
+      Fully qualified domain name (FQDN) of the forest root domain e.g.
+      corp.example.com
+    Valid: # boolean
     Type: String
+    MinLength: '3'
+    MaxLength: '25'
+    AllowedPattern: '[a-zA-Z0-9]+\..+'
+  DomainNetBIOSName:
+    Description: >-
+      NetBIOS name of the domain (upto 15 characters) for users of earlier
+      versions of Windows e.g. CORP
+    Valid: # boolean
+    Type: String
+    MinLength: '1'
+    MaxLength: '15'
+    AllowedPattern: '[a-zA-Z0-9]+'
+  RestoreModePassword:
+    Description: >-
+      Password for a separate Administrator account when the domain controller
+      is in Restore Mode. Must be at least 8 characters containing letters,
+      numbers and symbols
+    
+      Valid: # boolean
+    Type: String
+    MinLength: '8'
+    MaxLength: '32'
+    AllowedPattern: >-
+      (?=^.{6,255}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*
+    NoEcho: 'True'
+  SourceCidrForRDP:
+    Description: >-
+      IP Cidr from which you are likely to RDP into the instances. You can add
+      rules later by modifying the created security groups e.g. 54.32.98.160/32
+    
+    Valid: # boolean
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    AllowedPattern: '^([0-9]+\.){3}[0-9]+\/[0-9]+$'
+
+  VPCSelection:
+    Description: >-
+      This setting will control if the Cloudformer Web server will launch in the
+      default VPC or if a new VPC will be created, or if you wish to launch into
+      an existing non-default VPC.
+    Type: String
+    Default: CreateNewVPC
+    AllowedValues:
+      - Default
+      - CreateNewVPC
+    ConstraintDescription: must be either Default or CreateNewVPC
 
 Variables:
   vCPU: !FindInMap 
-        - AWStoCPURAM
+        - AWSVMtoCPURAM
         - !Ref 'AWS_Instance_Type'
         - !FindInMap 
           - vCPU
   RAM:  !FindInMap 
-        - AWStoCPURAM
+        - AWSVMtoCPURAM
         - !Ref 'AWS_Instance_Type'
         - !FindInMap 
           - RAM
   Price: !FindInMap 
-         - AWStoCPURAM
+         - AWStoVMCPURAM
          - !Ref 'AWS_Instance_Type'
          - !FindInMap 
           - Price
@@ -117,7 +170,7 @@ Variables:
   addressPrefix:  # string (e,g., "10.0.0.0/16")
   publicDomainName: #string (e.g., "myPublicIP")
   publicIPAddressType: #string (e.g., Dynamic)
-
+  NumWebServer:   # int
 
 
 
@@ -198,10 +251,127 @@ Resources:
     adminstratorLogin: !Ref DBUser
     adminstratorPassword: !Ref DBPassword
     storageMB: !Ref DBsize
+  MySQLDatabase:
+      Properties:
+      Engine: MySQL
+      DBName: !Ref DBName
+      MultiAZ: !Ref MultiAZDatabase
+      MasterUsername: !Ref DBUser
+      MasterUserPassword: !Ref DBPassword
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref DBAllocatedStorage
+      VPCSecurityGroups:
+        - !GetAtt 
+          - DBEC2SecurityGroup
+          - GroupId
 
+  DomainControllerWaitCondition:
+    DependsOn: DomainController
+    Properties:
+      Handle: !Ref DomainControllerWaitHandle
+      Timeout: '1500'
+  DomainControllerWaitHandle:
+    Properties:
+  DomainMemberSecurityGroupIngress1:
+    Properties:
+      GroupName: !Ref DomainMemberSecurityGroup
+      IpProtocol: tcp
+      FromPort: '3389'
+      ToPort: '3389'
+      CidrIp: !Ref SourceCidrForRDP
+
+  ApplicationLoadBalancer:
+    Properties:
+      Subnets: !Ref Subnets
+  ALBListener:
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: '80'
+      Protocol: HTTP
+  ALBTargetGroup:
+    Properties:
+      HealthCheckPath: /wordpress/wp-admin/install.php
+      HealthCheckIntervalSeconds: 10
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 5
+      VpcId: !Ref VpcId
+      TargetGroupAttributes:
+        - Key: stickiness.enabled
+          Value: 'true'
+        - Key: stickiness.type
+          Value: lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: '30'
+      VpcId: !Ref VpcId
+  WebServerGroup:
+    Properties:
+      VPCZoneIdentifier: !Ref Subnets
+      LaunchConfigurationName: !Ref LaunchConfig
+      MinSize: '1'
+      MaxSize: '5'
+      DesiredCapacity: !Ref WebServerCapacity
+      TargetGroupARNs:
+        - !Ref ALBTargetGroup
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MinInstancesInService: '1'
+        MaxBatchSize: '1'
+        PauseTime: PT15M
+        WaitOnResourceSignals: 'true'
+  LaunchConfig:
+    Properties:
+      SecurityGroups:
+        - !Ref WebServerSecurityGroup
+      KeyName: !Ref KeyName
+
+  VPC:
+    Properties:
+      Tags:
+        - Key: Name
+          Value: CloudformwerVPC
+      CidrBlock: 10.10.10.0/24
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+  VPCSubnet:
+    Properties:
+      MapPublicIpOnLaunch: 'true'
+      AvailabilityZone: !Select 
+        - '0'
+        - !GetAZs 
+          Ref: 'AWS::Region'
+      VpcId: !Ref VPC
+      CidrBlock: 10.10.10.0/24
+  VPCInternetGateway:
+    Properties: 
+  VPCAttachGateway:
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref VPCInternetGateway
+  VPCRouteTable:
+    Properties:
+      Tags:
+        - Key: Name
+          Value: CloudformerVPCRouteTable
+      VpcId: !Ref VPC
+  VPCSubnetRouteTableAssociation:
+    Properties:
+      SubnetId: !Ref VPCSubnet
+      RouteTableId: !Ref VPCRouteTable
+  RouteVPCAny:
+    DependsOn: VPCAttachGateway
+    Properties:
+      RouteTableId: !Ref VPCRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref VPCInternetGateway
 
 Mappings:
-  AWStoCPURAM:
+  AWSVMtoCPURAM:
     t2.nano:
       vCPU:  1            # in GiB
       RAM:   0.5          # in GiB
@@ -230,8 +400,156 @@ Mappings:
       vCPU:  64
       RAM:   256
       Price: '3.2/hr'
+  AWSDBtoINFRA:
+    db.m1.small:
+      vCPU:      1
+      Memory:    1.7 # in GiB
+      Bandwidth: 0 # in Mbps
+      Price:     
+    db.m4.large:
+      vCPU:      
+      Memory:    
+      Bandwidth: 
+      Price:     
+    db.r3.large:
+      vCPU:     
+      Memory:  
+      Bandwidth: 
+      Price:     
+    db.m2.4xlarge:
+      vCPU:      
+      Memory: 
+      Bandwidth: 
+      Price:     
 
 Metadata:
 
+  Resources:
+    VirtualMachine:
+      Type: #string e.g., 'AWS::EC2::Instance'
+      Condition: DefaultVPC
+      InstanceProfile: !Ref CFNInstanceProfile
+      SubnetId: !Ref VPCSubnet
+    SecurityGroup:
+      Type: #string 
+    NetworkInterface:
+      Type: #string 
+    VirtualNetworks:
+      Type: #string 
+    StorageAccount:
+      Type: #string 
+    DataBase:
+      Type: #string 
+    MySQLDatabase:
+      Type: 'AWS::RDS::DBInstance'
+    DomainControllerWaitCondition:
+      Type: 'AWS::CloudFormation::WaitCondition'
+    DomainControllerWaitHandle:
+      Type: 'AWS::CloudFormation::WaitConditionHandle'
+    DomainMemberSecurityGroupIngress1:
+      Type: 'AWS::EC2::SecurityGroupIngress'
+
+    ApplicationLoadBalancer:
+      Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    ALBListener:
+      Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    ALBTargetGroup:
+      Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    WebServerGroup:
+      Type: 'AWS::AutoScaling::AutoScalingGroup'
+    LaunchConfig:
+      Type: 'AWS::AutoScaling::LaunchConfiguration'
+
+
+    Conditions:
+      DefaultVPC: !Equals 
+        - !Ref VPCSelection
+       - Default
+      CreateNewVPC: !Equals 
+        - !Ref VPCSelection
+        - CreateNewVPC
+
+    CFNRole:
+      Type: 'AWS::IAM::Role'
+      Properties:
+        AssumeRolePolicyDocument:
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: !FindInMap 
+                  - Region2Principal
+                  - !Ref 'AWS::Region'
+                  - EC2Principal
+              Action:
+                - 'sts:AssumeRole'
+        Path: /
+    CFNRolePolicy:
+      Type: 'AWS::IAM::Policy'
+      Properties:
+        PolicyName: CloudFormerPolicy
+        PolicyDocument:
+          Statement:
+            - Effect: Allow
+              Action:
+                - 'autoscaling:Describe*'
+                - 'cloudformation:Describe*'
+                - 'cloudformation:List*'
+                - 'cloudfront:List*'
+                - 'cloudFront:Get*'
+                - 'cloudtrail:Describe*'
+                - 'cloudtrail:Get*'
+                - 'cloudwatch:Describe*'
+                - 'dynamodb:List*'
+                - 'dynamodb:Describe*'
+                - 'elasticbeanstalk:Describe*'
+                - 'ec2:Describe*'
+                - 'elasticloadbalancing:Describe*'
+                - 'elasticache:Describe*'
+                - 'rds:Describe*'
+                - 'rds:List*'
+                - 'route53:List*'
+                - 'route53:Get*'
+                - 's3:List*'
+                - 's3:Get*'
+                - 's3:PutObject'
+                - 'sdb:Get*'
+                - 'sdb:List*'
+                - 'sns:Get*'
+                - 'sns:List*'
+                - 'sqs:Get*'
+                - 'sqs:List*'
+                - 'opsworks:Describe*'
+                - 'redshift:Describe*'
+                - 'kinesis:Describe*'
+                - 'kinesis:List*'
+              Resource: '*'
+        Roles:
+          - !Ref CFNRole
+
+
+    VPC:
+      Condition: CreateNewVPC
+      Type: 'AWS::EC2::VPC'
+    VPCSubnet:
+      Condition: CreateNewVPC
+      Type: 'AWS::EC2::Subnet'
+    VPCInternetGateway:
+      Condition: CreateNewVPC
+    VPCAttachGateway:
+      Condition: CreateNewVPC
+      Type: 'AWS::EC2::VPCGatewayAttachment'
+    VPCRouteTable:
+      Condition: CreateNewVPC
+      Type: 'AWS::EC2::RouteTable'
+        VpcId: !Ref VPC
+    VPCSubnetRouteTableAssociation:
+      Condition: CreateNewVPC
+      Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    RouteVPCAny:
+      Condition: CreateNewVPC
+      Type: 'AWS::EC2::Route'
+      CFNInstanceProfile:
+        Type: 'AWS::IAM::InstanceProfile'
 
 # Ref: https://www.ec2instances.info/
+# http://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html
