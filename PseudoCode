@@ -1,0 +1,31 @@
+infrastructure_import(string FILE_NAME) {
+	return (string) format {VHD, JSON, YAML}
+	return (string) manufacture {AWS, Local VM, Azure, GCP}
+}
+
+Interpreter (string format, string manufacture) {
+	AWS_interpreter (string format){
+		return list<string> raw_data_input
+	}
+	Local_VM_interpreter (string format){
+		return list<string> raw_data_input
+	}
+
+	Azure_interpreter (string format){
+		return list<string> raw_data_input
+	}
+
+	GCP_interpreter (string format){
+		return list<string> raw_data_input
+	}
+
+}
+
+collector (list<string> raw_data_input) {
+	return list<string> infra_data_output
+	return list<string> auto_pkg_data_import
+}
+
+user_pkg_input () {
+	return list<string> user_pkg_data_import
+}
