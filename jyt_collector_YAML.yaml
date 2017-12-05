@@ -619,3 +619,4 @@ Metadata:
 # http://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html
 # Ref of VPC https://8kmiles.com/blog/azure-virtual-network-vs-aws-virtual-private-cloud/
 # Domain Controller is an instance, forward to Azure AD
+# VPC might be mapped to Virtual Network in Azure
