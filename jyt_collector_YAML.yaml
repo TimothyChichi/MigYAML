@@ -203,20 +203,29 @@ Resources:
         - 'php'
     Metadata:
 
+  StorageAccount:
+    name: #string
+    properties:
+      user: !Ref StorageUser
+      password: !Ref StoragePassword
 
-  SecurityGroup:
-    name: !Ref SecurityGroupName
-    Properties:
-      GroupDescription: Enable HTTP access via port 80
-      SecurityGroupIngress:
-        IpProtocol: tcp
-        SourcePortRange: '80'
-        DestinationPortRange: '80'
-        SourceAddressPrefix: 0.0.0.0/0
-        DestinationAddressPrefix: 0.0.0.0/0
-        access: Allow
-        direction: Inboound
-        priority: 100
+  Database:
+      Properties:
+      Engine: MySQL
+      DBName: !Ref DBName
+      MultiAZ: !Ref MultiAZDatabase
+      MasterUsername: !Ref DBUser
+      MasterUserPassword: !Ref DBPassword
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref DBAllocatedStorage
+      VPCSecurityGroups:
+        - !GetAtt 
+          - DBEC2SecurityGroup
+          - GroupId
+
+
+
+
 
   NetworkInterface:
     name: !Ref NetworkInterfaceName
@@ -234,81 +243,133 @@ Resources:
     name: # string
     properties:
       addressPrefixes: !Ref addressPrefix
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      dnsServer: # string
       subnets:
         name: !Ref subnetName
+
+  Subnet:
+    name: # string
+    Properties:
+      addressPrefix: 10.10.10.0/24
+      networkSecurityGroup: 
+        name: # string
+
+  NetworkSecurityGroup:
+    name: !Ref SecurityGroupName
+    Properties:
+      GroupDescription: Enable HTTP access via port 80
+      SecurityGroupIngress:
+        IpProtocol: tcp
+        SourcePortRange: '80'
+        DestinationPortRange: '80'
+        SourceAddressPrefix: 0.0.0.0/0
+        DestinationAddressPrefix: 0.0.0.0/0
+        access: Allow
+        direction: Inboound
+        priority: 100
+
+  LoadBalancer:
+    name: # string
+    Properties:
+      frontendIPConfigurations:
+        priorities:
+          privateIPaddress: # string
+          privateIPAllocationMethod: # string
+          subnets: 
+            name:
+          publicIPAddress:
+            name: # string
+            priorities:
+              publicIPAllocationMethod: # string
+              publicIPAddressVersion: # string
+              dnsSetting:
+                domainNameLabel: # string
+                fqdn: # string
+                reverseFqdn: # string
+            ipAddress: # string
+            idleTimeoutInMinutes: # int
+      backendAddressPools:
+        name:
+      loadBalancingRules:
+        name: # string
         properties:
-          addressPrefix: subnetPrefix
+          frontendIPConfigurations:
+            name: # string
+          backendAddressPools:
+            name: # string
+          protocol: # string
+          loadDistribution: # string
+          frontendPort: # int
+          backendPort: # int
+          idleTimeoutInMinutes: # int
+          enableFloatingIP: # boolean
+      probes:
+        name: # string
+        properties:
+          protocol: # string
+          port: # int
+          intervalInSeconds: # int
+          numberOfProbes: # int
+          requestPath: # string
+      inBoundNatRules:
+        name: # string
+        properties:
+          frontendIPConfiguration:
+            name: # string
+          protocol: # string
+          frontendPort: # int
+          backendPort: # int
+          idleTimeoutInMinutes: # int
+          enableFloatingIP: # boolean
+      inBoundNatPools:
+        name: # string
+        properties:
+          frontendIPConfiguration:
+            name: # string
+          protocol: # sring
+          frontendPortRangeStart: # int
+          frontendPortRangeEnd: # int
+          backendPort: # int
 
-  StorageAccount:
-    name: #string
+  Gateway:
+    name: # string
     properties:
-      user: !Ref StorageUser
-      password: !Ref StoragePassword
+      ipConfigurations:
+        name: # string
+        properties:
+          privateIPAllocationMethod: # string
+          subnet:
+            name: # string
+          publicIPAddress:
+            name: # string
+      gatewayType: # string
+      vpnType: # string
+      enableBgp: # boolean
+      activeActice: # boolean
+      gatewatDefaultSite:
+        name: # string
+      sku:
+        name: # string
+        tier: # string
+        capacity: # int
+      vpnClientConfiguration:
+        vpnClientAddressPool:
+          addressPresfixes: # string 
+        vpnClientRootCertifiecates:
+          name: # string
+          properties:
+            publicCertData: # string
+        vpnClientRevokedCertificates:
+          name: # string
+          properties:
+            thumbprint: # string
+      bgpSettings:
+        asn: # int
+        bgpPeeringAddress: # string
+        peerWeight: # int
 
-  DataBase:
-    name: !Ref DBName
-    type: MySQL
-    adminstratorLogin: !Ref DBUser
-    adminstratorPassword: !Ref DBPassword
-    storageMB: !Ref DBsize
-  MySQLDatabase:
-      Properties:
-      Engine: MySQL
-      DBName: !Ref DBName
-      MultiAZ: !Ref MultiAZDatabase
-      MasterUsername: !Ref DBUser
-      MasterUserPassword: !Ref DBPassword
-      DBInstanceClass: !Ref DBInstanceClass
-      AllocatedStorage: !Ref DBAllocatedStorage
-      VPCSecurityGroups:
-        - !GetAtt 
-          - DBEC2SecurityGroup
-          - GroupId
-
-  DomainControllerWaitCondition:
-    DependsOn: DomainController
-    Properties:
-      Handle: !Ref DomainControllerWaitHandle
-      Timeout: '1500'
-  DomainControllerWaitHandle:
-    Properties:
-  DomainMemberSecurityGroupIngress1:
-    Properties:
-      GroupName: !Ref DomainMemberSecurityGroup
-      IpProtocol: tcp
-      FromPort: '3389'
-      ToPort: '3389'
-      CidrIp: !Ref SourceCidrForRDP
-
-  ApplicationLoadBalancer:
-    Properties:
-      Subnets: !Ref Subnets
-  ALBListener:
-    Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref ALBTargetGroup
-      LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Port: '80'
-      Protocol: HTTP
-  ALBTargetGroup:
-    Properties:
-      HealthCheckPath: /wordpress/wp-admin/install.php
-      HealthCheckIntervalSeconds: 10
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 2
-      Port: 80
-      Protocol: HTTP
-      UnhealthyThresholdCount: 5
-      VpcId: !Ref VpcId
-      TargetGroupAttributes:
-        - Key: stickiness.enabled
-          Value: 'true'
-        - Key: stickiness.type
-          Value: lb_cookie
-        - Key: stickiness.lb_cookie.duration_seconds
-          Value: '30'
-      VpcId: !Ref VpcId
   WebServerGroup:
     Properties:
       VPCZoneIdentifier: !Ref Subnets
@@ -330,39 +391,13 @@ Resources:
         - !Ref WebServerSecurityGroup
       KeyName: !Ref KeyName
 
-  VPC:
-    Properties:
-      Tags:
-        - Key: Name
-          Value: CloudformwerVPC
-      CidrBlock: 10.10.10.0/24
-      EnableDnsSupport: 'true'
-      EnableDnsHostnames: 'true'
-  VPCSubnet:
-    Properties:
-      MapPublicIpOnLaunch: 'true'
-      AvailabilityZone: !Select 
-        - '0'
-        - !GetAZs 
-          Ref: 'AWS::Region'
-      VpcId: !Ref VPC
-      CidrBlock: 10.10.10.0/24
-  VPCInternetGateway:
-    Properties: 
-  VPCAttachGateway:
-    Properties:
-      VpcId: !Ref VPC
-      InternetGatewayId: !Ref VPCInternetGateway
+ 
   VPCRouteTable:
     Properties:
       Tags:
         - Key: Name
           Value: CloudformerVPCRouteTable
       VpcId: !Ref VPC
-  VPCSubnetRouteTableAssociation:
-    Properties:
-      SubnetId: !Ref VPCSubnet
-      RouteTableId: !Ref VPCRouteTable
   RouteVPCAny:
     DependsOn: VPCAttachGateway
     Properties:
@@ -436,6 +471,8 @@ Metadata:
       Type: #string 
     VirtualNetworks:
       Type: #string 
+      Condition: CreateNewVPC
+      Type: 'AWS::EC2::VPC'
     StorageAccount:
       Type: #string 
     DataBase:
@@ -449,7 +486,7 @@ Metadata:
     DomainMemberSecurityGroupIngress1:
       Type: 'AWS::EC2::SecurityGroupIngress'
 
-    ApplicationLoadBalancer:
+    LoadBalancer:
       Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
     ALBListener:
       Type: 'AWS::ElasticLoadBalancingV2::Listener'
@@ -527,17 +564,24 @@ Metadata:
           - !Ref CFNRole
 
 
-    VPC:
-      Condition: CreateNewVPC
-      Type: 'AWS::EC2::VPC'
-    VPCSubnet:
+    Subnet:
       Condition: CreateNewVPC
       Type: 'AWS::EC2::Subnet'
+      MapPublicIpOnLaunch: 'true'
+      AvailabilityZone: !Select 
+        - '0'
+        - !GetAZs 
+          Ref: 'AWS::Region'
+      VpcId: !Ref VPC
     VPCInternetGateway:
       Condition: CreateNewVPC
+      Properties: 
     VPCAttachGateway:
       Condition: CreateNewVPC
       Type: 'AWS::EC2::VPCGatewayAttachment'
+      Properties:
+        VpcId: !Ref VPC
+        InternetGatewayId: !Ref VPCInternetGateway
     VPCRouteTable:
       Condition: CreateNewVPC
       Type: 'AWS::EC2::RouteTable'
@@ -551,5 +595,27 @@ Metadata:
       CFNInstanceProfile:
         Type: 'AWS::IAM::InstanceProfile'
 
+    VPCSubnetRouteTableAssociation:
+      Properties:
+        SubnetId: !Ref VPCSubnet
+        RouteTableId: !Ref VPCRouteTable
+
+    DomainControllerWaitCondition:
+      DependsOn: DomainController
+      Properties:
+        Handle: !Ref DomainControllerWaitHandle
+        Timeout: '1500'
+    DomainControllerWaitHandle:
+      Properties:
+    DomainMemberSecurityGroupIngress1:
+      Properties:
+        GroupName: !Ref DomainMemberSecurityGroup
+        IpProtocol: tcp
+        FromPort: '3389'
+        ToPort: '3389'
+        CidrIp: !Ref SourceCidrForRDP
+
 # Ref: https://www.ec2instances.info/
 # http://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html
+# Ref of VPC https://8kmiles.com/blog/azure-virtual-network-vs-aws-virtual-private-cloud/
+# Domain Controller is an instance, forward to Azure AD
