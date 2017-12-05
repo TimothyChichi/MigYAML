@@ -188,8 +188,8 @@ Variables:
   subnetName:     # string
   subnetPrefix:   # string (e.g., "10.0.0.0/24")
   addressPrefix:  # string (e,g., "10.0.0.0/16")
-  publicDomainName: #string (e.g., "myPublicIP")
-  publicIPAddressType: #string (e.g., Dynamic)
+  publicDomainName: # string (e.g., "myPublicIP")
+  publicIPAddressType: # string (e.g., Dynamic)
   NumWebServer:   # int
 
 
@@ -224,24 +224,24 @@ Resources:
     Metadata:
 
   StorageAccount:
-    name: #string
+    name: # string
     properties:
       user: !Ref StorageUser
       password: !Ref StoragePassword
 
   Database:
-      Properties:
-      Engine: MySQL
-      DBName: !Ref DBName
-      MultiAZ: !Ref MultiAZDatabase
-      MasterUsername: !Ref DBUser
-      MasterUserPassword: !Ref DBPassword
-      DBInstanceClass: !Ref DBInstanceClass
-      AllocatedStorage: !Ref DBAllocatedStorage
-      VPCSecurityGroups:
-        - !GetAtt 
-          - DBEC2SecurityGroup
-          - GroupId
+    Properties:
+    Engine: MySQL
+    DBName: !Ref DBName
+    MultiAZ: !Ref MultiAZDatabase
+    MasterUsername: !Ref DBUser
+    MasterUserPassword: !Ref DBPassword
+    DBInstanceClass: !Ref DBInstanceClass
+    AllocatedStorage: !Ref DBAllocatedStorage
+    SecurityGroups:
+      - !GetAtt 
+        - DBEC2SecurityGroup
+        - GroupId
 
   NetworkInterface:
     name: !Ref NetworkInterfaceName
@@ -480,8 +480,6 @@ Metadata:
     StorageAccount:
       Type: #string 
     DataBase:
-      Type: #string 
-    MySQLDatabase:
       Type: 'AWS::RDS::DBInstance'
     DomainControllerWaitCondition:
       Type: 'AWS::CloudFormation::WaitCondition'
@@ -502,13 +500,6 @@ Metadata:
       Type: 'AWS::AutoScaling::LaunchConfiguration'
 
 
-    Conditions:
-      DefaultVPC: !Equals 
-        - !Ref VPCSelection
-       - Default
-      CreateNewVPC: !Equals 
-        - !Ref VPCSelection
-        - CreateNewVPC
 
     CFNRole:
       Type: 'AWS::IAM::Role'
@@ -630,6 +621,14 @@ Metadata:
         FromPort: '3389'
         ToPort: '3389'
         CidrIp: !Ref SourceCidrForRDP
+
+  Conditions:
+    DefaultVPC: !Equals 
+      - !Ref VPCSelection
+     - Default
+    CreateNewVPC: !Equals 
+      - !Ref VPCSelection
+      - CreateNewVPC
 
 # Ref: https://www.ec2instances.info/
 # http://docs.aws.amazon.com/zh_cn/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html
