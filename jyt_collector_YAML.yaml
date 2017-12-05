@@ -132,17 +132,16 @@ Parameters:
     MaxLength: '18'
     AllowedPattern: '^([0-9]+\.){3}[0-9]+\/[0-9]+$'
 
-  VPCSelection:
+  VNSelection:
     Description: >-
-      This setting will control if the Cloudformer Web server will launch in the
-      default VPC or if a new VPC will be created, or if you wish to launch into
-      an existing non-default VPC.
+      This setting will control if the Web server will launch in the
+      default Virtual Network or if a new Virtual Network will be created, or if you wish to launch into
+      an existing non-default Virtual Network.
     Type: String
-    Default: CreateNewVPC
+    Default: CreateNewVN
     AllowedValues:
       - Default
-      - CreateNewVPC
-    ConstraintDescription: must be either Default or CreateNewVPC
+      - CreateNewVN
 
 Variables:
   vCPU: !FindInMap 
@@ -159,7 +158,28 @@ Variables:
          - AWStoVMCPURAM
          - !Ref 'AWS_Instance_Type'
          - !FindInMap 
-          - Price
+        - Price
+
+  DBCPU: !FindInMap 
+        - AWSDBtoINFRA
+        - !Ref 'AWS_DB_Type'
+        - !FindInMap 
+        - CPU
+  DBMemory: !FindInMap 
+        - AWSDBtoINFRA
+        - !Ref 'AWS_DB_Type'
+        - !FindInMap 
+        - Memory
+  DBBandwidth: !FindInMap 
+        - AWSDBtoINFRA
+        - !Ref 'AWS_DB_Type'
+        - !FindInMap 
+        - Bandwidth
+  DBPrice:  !FindInMap 
+        - AWSDBtoINFRA
+        - !Ref 'AWS_DB_Type'
+        - !FindInMap 
+        - Price 
 
   vCPUtype:       # string (e.g., Intel Xeon)
   Volume:         # integer (in GB)
@@ -424,7 +444,7 @@ Mappings:
       vCPU:      1
       Memory:    1.7 # in GiB
       Bandwidth: 0 # in Mbps
-      Price:     
+      Price:   # string   
     db.m4.large:
       vCPU:      
       Memory:    
