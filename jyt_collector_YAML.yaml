@@ -223,10 +223,6 @@ Resources:
           - DBEC2SecurityGroup
           - GroupId
 
-
-
-
-
   NetworkInterface:
     name: !Ref NetworkInterfaceName
     DependsOn: !Ref VirtualNetworks
@@ -392,18 +388,6 @@ Resources:
       KeyName: !Ref KeyName
 
  
-  VPCRouteTable:
-    Properties:
-      Tags:
-        - Key: Name
-          Value: CloudformerVPCRouteTable
-      VpcId: !Ref VPC
-  RouteVPCAny:
-    DependsOn: VPCAttachGateway
-    Properties:
-      RouteTableId: !Ref VPCRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref VPCInternetGateway
 
 Mappings:
   AWSVMtoCPURAM:
@@ -586,6 +570,11 @@ Metadata:
       Condition: CreateNewVPC
       Type: 'AWS::EC2::RouteTable'
         VpcId: !Ref VPC
+      Properties:
+        Tags:
+          - Key: Name
+            Value: CloudformerVPCRouteTable
+        VpcId: !Ref VPC
     VPCSubnetRouteTableAssociation:
       Condition: CreateNewVPC
       Type: 'AWS::EC2::SubnetRouteTableAssociation'
@@ -594,11 +583,18 @@ Metadata:
       Type: 'AWS::EC2::Route'
       CFNInstanceProfile:
         Type: 'AWS::IAM::InstanceProfile'
+      DependsOn: VPCAttachGateway
+      Properties:
+        RouteTableId: !Ref VPCRouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        GatewayId: !Ref VPCInternetGateway
 
     VPCSubnetRouteTableAssociation:
       Properties:
         SubnetId: !Ref VPCSubnet
         RouteTableId: !Ref VPCRouteTable
+
+    
 
     DomainControllerWaitCondition:
       DependsOn: DomainController
